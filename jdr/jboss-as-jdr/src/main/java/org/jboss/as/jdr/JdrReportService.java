@@ -76,6 +76,7 @@ public class JdrReportService implements JdrReportCollector, Service<JdrReportCo
      * Collect a JDR report when run outside the Application Server.
      */
     public JdrReport standaloneCollect(String host, String port) throws OperationFailedException {
+        System.out.println("JdrReportService.standaloneCollect()");
         String username = null;
         String password = null;
 
@@ -93,7 +94,8 @@ public class JdrReportService implements JdrReportCollector, Service<JdrReportCo
      * Collect a JDR report.
      */
     public JdrReport collect() throws OperationFailedException {
-        JdrRunner runner = new JdrRunner();
+        System.out.println("JdrReportService.collect()");
+        JdrRunner runner = new JdrRunner(true);
         serverEnvironment = serverEnvironmentValue.getValue();
         runner.setJbossHomeDir(serverEnvironment.getHomeDir().getAbsolutePath());
         runner.setReportLocationDir(serverEnvironment.getServerTempDir().getAbsolutePath());

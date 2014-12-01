@@ -31,6 +31,13 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import org.jboss.as.cli.scriptsupport.CLI;
+import org.jboss.as.cli.scriptsupport.CLI.Result;
+
+import org.jboss.as.controller.client.helpers.ClientConstants;
+
+import org.jboss.dmr.ModelNode;
+
 import org.jboss.as.controller.OperationFailedException;
 
 /**
@@ -59,8 +66,10 @@ public class CommandLineMain {
      * @param args ignored
      */
     public static void main(String[] args) {
-        String port = "9999";
+        int port = 9999;
         String host = "localhost";
+        String username = null;
+        char[] password = null;
 
         try {
             CommandLine line = parser.parse(options, args, false);
@@ -74,28 +83,91 @@ public class CommandLineMain {
             }
 
             if (line.hasOption("port")) {
-                port = line.getOptionValue("port");
+                port = Integer.parseInt(line.getOptionValue("port"));
+            }
+
+            if (line.hasOption("username")) {
+                username = line.getOptionValue("username");
+            }
+
+            if (line.hasOption("password")) {
+                password = line.getOptionValue("password").toCharArray();
             }
         } catch (ParseException e) {
             System.out.println(e.getMessage());
+            formatter.printHelp(usage, options);
+            return;
+        } catch (NumberFormatException nfe) {
+            System.out.println(nfe.getMessage());
             formatter.printHelp(usage, options);
             return;
         }
 
         System.out.println("Initializing JBoss Diagnostic Reporter...");
 
-        JdrReportService reportService = new JdrReportService();
-
-        JdrReport response = null;
+        CLI cli = null;
         try {
-            response = reportService.standaloneCollect(host, port);
-            System.out.println("JDR started: " + response.getStartTime().toString());
-            System.out.println("JDR ended: " + response.getEndTime().toString());
-            System.out.println("JDR location: " + response.getLocation());
-        } catch (OperationFailedException e) {
-            System.out.println("Failed to complete the JDR report: " + e.getMessage());
+            cli = CLI.newInstance();
+            cli.connect(host, port, username, password);
+            Result cmdResult = cli.cmd("/subsystem=jdr:generate-jdr-report()");
+            ModelNode response = cmdResult.getResponse();
+            reportFailure(response);
+            ModelNode result = response.get(ClientConstants.RESULT);
+            String startTime = result.get("start-time").asString();
+            String endTime = result.get("end-time").asString();
+            String reportLocation = result.get("report-location").asString();
+            System.out.println("JDR started: " + startTime);
+            System.out.println("JDR ended: " + endTime);
+            System.out.println("JDR location: " + reportLocation);
+        } catch (IllegalStateException ise) {
+            //ise.printStackTrace();
+            //reportWarning(ise);
+            System.out.println(ise.getMessage());
+            // Unable to connect to a running server, so proceed without it
+
+            JdrReportService reportService = new JdrReportService();
+
+            JdrReport response = null;
+            try {
+                response = reportService.standaloneCollect(host, String.valueOf(port));
+                System.out.println("JDR started: " + response.getStartTime().toString());
+                System.out.println("JDR ended: " + response.getEndTime().toString());
+                System.out.println("JDR location: " + response.getLocation());
+            } catch (OperationFailedException e) {
+                System.out.println("Failed to complete the JDR report: " + e.getMessage());
+            }
+        } finally {
+            if(cli != null) {
+                try {
+                    cli.disconnect();
+                } catch(Exception e) {
+                }
+            }
         }
 
        System.exit(0);
+    }
+
+    /* private static void reportWarning(final Exception e) {
+        Throwable causedBy = e;
+        while(causedBy.getCausedBy() != null)
+            causedBy = causedBy.getCausedBy();
+        System.out.println(causedBy.getMessage());
+    }*/
+
+    private static void reportFailure(final ModelNode node) {
+        if (!node.get(ClientConstants.OUTCOME).asString().equals(ClientConstants.SUCCESS)) {
+            final String msg;
+            if (node.hasDefined(ClientConstants.FAILURE_DESCRIPTION)) {
+                if (node.hasDefined(ClientConstants.OP)) {
+                    msg = String.format("Operation '%s' at address '%s' failed: %s", node.get(ClientConstants.OP), node.get(ClientConstants.OP_ADDR), node.get(ClientConstants.FAILURE_DESCRIPTION));
+                } else {
+                    msg = String.format("Operation failed: %s", node.get(ClientConstants.FAILURE_DESCRIPTION));
+                }
+            } else {
+                msg = String.format("Operation failed: %s", node);
+            }
+            throw new RuntimeException(msg);
+        }
     }
 }

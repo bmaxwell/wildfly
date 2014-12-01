@@ -123,6 +123,8 @@ public class CallAS7 extends JdrCommand {
             request.get("server").set(this.env.getServerName());
         }
 
+        System.out.println("request: " + request);
+
         this.env.getZip().add(this.env.getClient().execute(request).toJSONString(true), this.name);
     }
 }

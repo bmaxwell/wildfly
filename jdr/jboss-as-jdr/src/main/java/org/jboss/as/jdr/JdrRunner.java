@@ -49,9 +49,18 @@ public class JdrRunner implements JdrReportCollector {
     CommandContext ctx;
 
     public JdrRunner() {
+        System.out.println("JdrRunner ??");
     }
 
+    public JdrRunner(boolean inServer) {
+        System.out.println("JdrRunner inServer: " + inServer);
+        this.env.setServerRunning(inServer);
+    }
+
+
     public JdrRunner(String user, String pass, String host, String port) {
+        System.out.println("JdrRunner(" + user + ", " + pass + ", " + host + ", " + port + ")");
+        this.env.setServerRunning(false);
         this.env.setUsername(user);
         this.env.setPassword(pass);
         this.env.setHost(host);
@@ -62,12 +71,14 @@ public class JdrRunner implements JdrReportCollector {
             this.env.setClient(ctx.getModelControllerClient());
         }
         catch (Exception e) {
+            System.out.println(e.getMessage());
             ctx.terminateSession();
             // the server isn't available, carry on
         }
     }
 
     public JdrReport collect() throws OperationFailedException {
+        System.out.println("JdrRunner.collect - isServerRunning: " + this.env.isServerRunning());
 
         try {
             this.env.setZip(new JdrZipFile(new JdrEnvironment(this.env)));
