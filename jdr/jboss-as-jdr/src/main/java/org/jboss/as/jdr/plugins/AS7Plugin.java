@@ -26,6 +26,7 @@ import org.jboss.as.jdr.commands.CallAS7;
 import org.jboss.as.jdr.commands.CollectFiles;
 import org.jboss.as.jdr.commands.JarCheck;
 import org.jboss.as.jdr.commands.JdrCommand;
+import org.jboss.as.jdr.commands.OS;
 import org.jboss.as.jdr.commands.TreeCommand;
 import org.jboss.as.jdr.util.Sanitizer;
 import org.jboss.as.jdr.util.Sanitizers;
@@ -55,7 +56,8 @@ public class AS7Plugin implements JdrPlugin {
             new CollectFiles("*.log").omit("*server.log"),
             new CollectFiles("*gc.log.*"),
             new CollectFiles("*.properties").sanitizer(passwordSanitizer),
-            new CollectFiles("*.xml").sanitizer(xmlSanitizer)
+            new CollectFiles("*.xml").sanitizer(xmlSanitizer),
+            new OS()
         );
     }
 
